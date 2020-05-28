@@ -167,6 +167,34 @@ VectorXf QuadEstimatorEKF::PredictState(VectorXf curState, float dt, V3F accel, 
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+  // following formulas from estimator document section 7.2
+  Mat3x3F Rbg = attitude.RotationMatrix_IwrtB();
+
+  MatrixXf B(QUAD_EKF_NUM_STATES, 4);
+  B.row(0) << 0, 0, 0, 0;
+  B.row(1) << 0, 0, 0, 0;
+  B.row(2) << 0, 0, 0, 0;
+  B.row(3) << Rbg(0,0), Rbg(0,1), Rbg(0,2), 0;
+  B.row(4) << Rbg(1,0), Rbg(1,1), Rbg(1,2), 0;
+  B.row(5) << Rbg(2,0), Rbg(2,1), Rbg(2,2), 0;
+  B.row(6) << 0, 0, 0, 1;
+
+  VectorXf a(QUAD_EKF_NUM_STATES);
+  a << curState[0] + dt * curState[3],
+       curState[1] + dt * curState[4],
+       curState[2] + dt * curState[5],
+       curState[3],
+       curState[4],
+       curState[5] - (9.81f * dt),
+       curState[6];
+
+  VectorXf u(4);
+  u << accel.x,
+       accel.y,
+       accel.z,
+       0.0;
+
+  predictedState = a + (B * (u * dt));
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -194,6 +222,15 @@ MatrixXf QuadEstimatorEKF::GetRbgPrime(float roll, float pitch, float yaw)
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+  RbgPrime.row(0) << -cos(roll) * sin(yaw) - sin(roll) * cos(pitch) * cos(yaw),
+                     cos(roll) * cos(yaw) - sin(roll) * cos(pitch) * sin(yaw),
+                     0.0;
+  RbgPrime.row(1) << sin(roll) * sin(yaw) - cos(roll) * cos (pitch) * cos(yaw),
+                     -sin(roll) * cos(yaw),
+                     0.0;
+  RbgPrime.row(2) << sin(pitch) * cos(yaw),
+                     sin(pitch) * sin(yaw),
+                     0.0;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -240,6 +277,26 @@ void QuadEstimatorEKF::Predict(float dt, V3F accel, V3F gyro)
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+  // set all elements different from identity matrix
+  gPrime(0,3) = dt;
+  gPrime(1,4) = dt;
+  gPrime(2,5) = dt;
+
+  VectorXf u(3);
+  u << accel.x, accel.y, accel.z;
+
+  VectorXf gPrime_sub_vector(3);
+  gPrime_sub_vector = RbgPrime * u * dt;
+
+  gPrime(3,6) = gPrime_sub_vector(0);
+  gPrime(4,6) = gPrime_sub_vector(1);
+  gPrime(5,6) = gPrime_sub_vector(2);
+
+  // calculate predicted covariance matrix
+  MatrixXf gPrime_T = gPrime.transpose();
+  MatrixXf predicted_ekfCov = (gPrime * (ekfCov * gPrime_T)) + Q;
+
+  ekfCov = predicted_ekfCov;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
