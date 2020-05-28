@@ -322,6 +322,23 @@ void QuadEstimatorEKF::UpdateFromGPS(V3F pos, V3F vel)
   //  - this is a very simple update
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+  // set all "diagonal" elements of measurement model jacobian to 1.0, last
+  // column stays with zeros
+  hPrime(0,0) = 1.0;
+  hPrime(1,1) = 1.0;
+  hPrime(2,2) = 1.0;
+  hPrime(3,3) = 1.0;
+  hPrime(4,4) = 1.0;
+  hPrime(5,5) = 1.0;
+
+  // set current estimated position
+  zFromX(0) = ekfState(0);
+  zFromX(1) = ekfState(1);
+  zFromX(2) = ekfState(2);
+  zFromX(3) = ekfState(3);
+  zFromX(4) = ekfState(4);
+  zFromX(5) = ekfState(5);
+
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   Update(z, hPrime, R_GPS, zFromX);
